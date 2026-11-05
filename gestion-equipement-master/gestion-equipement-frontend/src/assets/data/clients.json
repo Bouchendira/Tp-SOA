@@ -1,0 +1,34 @@
+[
+  {
+    "id": "cli-1",
+    "nom": "Ste BTP Exemple",
+    "typeClient": "ENTREPRISE",
+    "matriculeFiscal": "1234567A",
+    "telephone": "71123456",
+    "email": "contact@btpexemple.tn"
+  },
+  {
+    "id": "cli-2",
+    "nom": "Chantiers du Sud SARL",
+    "typeClient": "ENTREPRISE",
+    "matriculeFiscal": "7654321M",
+    "telephone": "73456789",
+    "email": "contact@chantiersdusud.tn"
+  },
+  {
+    "id": "cli-3",
+    "nom": "Karim Jaziri",
+    "typeClient": "PARTICULIER",
+    "cin": "08123456",
+    "telephone": "22334455",
+    "email": "karim.jaziri@example.com"
+  },
+  {
+    "id": "cli-4",
+    "nom": "Sonia Mabrouk",
+    "typeClient": "PARTICULIER",
+    "cin": "09876543",
+    "telephone": "98112233",
+    "email": "sonia.mabrouk@example.com"
+  }
+]

@@ -1,0 +1,35 @@
+[
+  {
+    "id": "ven-1",
+    "date": "2026-08-05",
+    "clientId": "cli-3",
+    "clientNom": "Karim Jaziri",
+    "employeId": "emp-3",
+    "employeNom": "Yosra Chaabane",
+    "modePaiement": "ESPECES",
+    "fraisTransport": 0,
+    "lignes": [
+      { "id": "lv-1", "equipementId": "art-1", "equipementNom": "Boite de vis 6x40", "quantite": 3, "prixUnitaireHT": 8.5, "tauxTVA": 19 },
+      { "id": "lv-2", "equipementId": "art-3", "equipementNom": "Gants de chantier (paire)", "quantite": 2, "prixUnitaireHT": 6.2, "tauxTVA": 19 }
+    ],
+    "montantTotalHT": 37.9,
+    "montantTotalTVA": 7.2,
+    "montantTotalTTC": 45.1
+  },
+  {
+    "id": "ven-2",
+    "date": "2026-08-09",
+    "clientId": "cli-4",
+    "clientNom": "Sonia Mabrouk",
+    "employeId": "emp-3",
+    "employeNom": "Yosra Chaabane",
+    "modePaiement": "CARTE",
+    "fraisTransport": 15,
+    "lignes": [
+      { "id": "lv-3", "equipementId": "art-4", "equipementNom": "Casque de chantier", "quantite": 4, "prixUnitaireHT": 12.9, "tauxTVA": 19 }
+    ],
+    "montantTotalHT": 51.6,
+    "montantTotalTVA": 9.8,
+    "montantTotalTTC": 61.4
+  }
+]

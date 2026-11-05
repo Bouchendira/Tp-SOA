@@ -1,0 +1,5 @@
+[
+  { "id": "cat-1", "nom": "Outillage electrique", "description": "Perceuses, meuleuses, visseuses" },
+  { "id": "cat-2", "nom": "Quincaillerie generale", "description": "Vis, boulons, fixations, EPI" },
+  { "id": "cat-3", "nom": "Engins de chantier", "description": "Betonnieres, compacteurs, groupes electrogenes" }
+]

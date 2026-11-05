@@ -1,0 +1,38 @@
+[
+  {
+    "id": "emp-1",
+    "nom": "Ahmed Ben Ali",
+    "cin": "10000001",
+    "email": "admin@quincaillerie.tn",
+    "telephone": "20111111",
+    "role": "ADMINISTRATEUR",
+    "motDePasse": "Password123!"
+  },
+  {
+    "id": "emp-2",
+    "nom": "Sami Trabelsi",
+    "cin": "10000002",
+    "email": "magasinier@quincaillerie.tn",
+    "telephone": "20222222",
+    "role": "MAGASINIER",
+    "motDePasse": "Password123!"
+  },
+  {
+    "id": "emp-3",
+    "nom": "Yosra Chaabane",
+    "cin": "10000003",
+    "email": "agent@quincaillerie.tn",
+    "telephone": "20333333",
+    "role": "AGENT",
+    "motDePasse": "Password123!"
+  },
+  {
+    "id": "emp-4",
+    "nom": "Mehdi Gharbi",
+    "cin": "10000004",
+    "email": "comptable@quincaillerie.tn",
+    "telephone": "20444444",
+    "role": "COMPTABLE",
+    "motDePasse": "Password123!"
+  }
+]
