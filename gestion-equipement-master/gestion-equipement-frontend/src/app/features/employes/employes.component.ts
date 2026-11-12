@@ -27,6 +27,8 @@ const EMPTY_FORM: EmployeForm = {
       <button class="btn btn-primary" (click)="openCreate()">+ Nouvel employe</button>
     </header>
 
+    @if (pageError()) { <p class="hint" role="alert">{{ pageError() }}</p> }
+
     <div class="flex-between" style="margin-bottom:14px">
       <app-search-bar [(value)]="search" placeholder="Rechercher par nom, email, role..."></app-search-bar>
       <span class="text-muted" style="font-size:12.5px">{{ filtered().length }} resultat(s)</span>
@@ -122,6 +124,7 @@ export class EmployesComponent implements OnInit {
   modalOpen = signal(false);
   editing = signal<Employe | null>(null);
   error = signal<string | null>(null);
+  pageError = signal<string | null>(null);
   form: EmployeForm = { ...EMPTY_FORM };
 
   filtered = computed(() => {
@@ -139,7 +142,9 @@ export class EmployesComponent implements OnInit {
   constructor(private employeService: EmployeService) {}
 
   ngOnInit(): void {
-    this.employeService.load().subscribe();
+    this.employeService.load().subscribe({
+      error: (err: Error) => this.pageError.set(err.message),
+    });
     this.employeService.data$.subscribe((data) => this.employes.set(data));
   }
 
@@ -169,19 +174,27 @@ export class EmployesComponent implements OnInit {
     const editing = this.editing();
     if (editing) {
       const { motDePasse, ...rest } = this.form;
-      this.employeService.update(editing.id, rest).subscribe(() => this.closeModal());
+      this.employeService.update(editing.id, rest).subscribe({
+        next: () => this.closeModal(),
+        error: (err: Error) => this.error.set(err.message),
+      });
     } else {
       if (!this.form.motDePasse || this.form.motDePasse.length < 8) {
         this.error.set('Le mot de passe doit contenir au moins 8 caracteres');
         return;
       }
-      this.employeService.createEmploye(this.form).subscribe(() => this.closeModal());
+      this.employeService.createEmploye(this.form).subscribe({
+        next: () => this.closeModal(),
+        error: (err: Error) => this.error.set(err.message),
+      });
     }
   }
 
   remove(e: Employe): void {
     if (confirm(`Supprimer l'employe "${e.nom}" ?`)) {
-      this.employeService.delete(e.id).subscribe();
+      this.employeService.delete(e.id).subscribe({
+        error: (err: Error) => this.pageError.set(err.message),
+      });
     }
   }
 }

@@ -30,7 +30,7 @@ public class RestAccessDeniedHandler implements AccessDeniedHandler {
                 null
         );
         response.setStatus(HttpStatus.FORBIDDEN.value());
-        response.setContentType("application/json");
+        response.setContentType("application/json;charset=UTF-8");
         response.getWriter().write(objectMapper.writeValueAsString(error));
     }
 }

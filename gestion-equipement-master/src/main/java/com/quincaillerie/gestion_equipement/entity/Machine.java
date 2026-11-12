@@ -1,8 +1,6 @@
 package com.quincaillerie.gestion_equipement.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -20,7 +18,7 @@ public class Machine extends Equipement{
     @Column(name = "numero_serie", unique = true)
     private String numeroSerie;
 
-    @Column(name = "prix_location_jour_ht", nullable = false)
+    @Column(name = "prix_location_jour_ht")
     private Double prixLocationJourHT;
 
     @Column(name = "date_acquisition")
@@ -31,4 +29,7 @@ public class Machine extends Equipement{
 
     private Double caution;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "employe_affecte_id")
+    private Employe employeAffecte;
 }

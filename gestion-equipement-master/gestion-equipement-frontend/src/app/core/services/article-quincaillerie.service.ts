@@ -1,14 +1,14 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { MockCrudService } from './mock-crud.service';
+import { ApiCrudService } from './api-crud.service';
 import { ArticleQuincaillerie, EtatEquipement } from '../models/equipement.model';
 import { CategorieService } from './categorie.service';
 
 @Injectable({ providedIn: 'root' })
-export class ArticleQuincaillerieService extends MockCrudService<ArticleQuincaillerie> {
+export class ArticleQuincaillerieService extends ApiCrudService<ArticleQuincaillerie> {
   constructor(http: HttpClient, private categorieService: CategorieService) {
-    super(http, 'assets/data/articles.json');
+    super(http, '/api/articles-quincaillerie');
   }
 
   /**
@@ -17,13 +17,11 @@ export class ArticleQuincaillerieService extends MockCrudService<ArticleQuincail
    */
   createArticle(data: Omit<ArticleQuincaillerie, 'id' | 'etat' | 'categorieNom'>): Observable<ArticleQuincaillerie> {
     const categorie = this.categorieService.getById(data.categorieId);
-    const article: ArticleQuincaillerie = {
+    return this.create({
       ...data,
-      id: this.generateId('art'),
       etat: data.quantiteStock > 0 ? EtatEquipement.DISPONIBLE : EtatEquipement.RETIRE,
       categorieNom: categorie?.nom,
-    };
-    return this.create(article);
+    });
   }
 
   updateArticle(id: string, changes: Partial<ArticleQuincaillerie>): Observable<ArticleQuincaillerie | undefined> {
@@ -34,5 +32,15 @@ export class ArticleQuincaillerieService extends MockCrudService<ArticleQuincail
       };
     }
     return this.update(id, changes);
+  }
+
+  protected override toRequest(article: Partial<ArticleQuincaillerie>): unknown {
+    const {
+      id: _id,
+      etat: _etat,
+      categorieNom: _categorieNom,
+      ...request
+    } = article;
+    return request;
   }
 }

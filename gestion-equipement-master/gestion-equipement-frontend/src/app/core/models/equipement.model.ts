@@ -1,10 +1,12 @@
 export enum EtatEquipement {
   DISPONIBLE = 'DISPONIBLE',
+  A_COMMANDER = 'A_COMMANDER',
   LOUE = 'LOUE',
   VENDU = 'VENDU',
   EN_MAINTENANCE = 'EN_MAINTENANCE',
   AFFECTE = 'AFFECTE',
   RETIRE = 'RETIRE',
+  RETOURNE_FOURNISSEUR = 'RETOURNE_FOURNISSEUR',
 }
 
 export interface EquipementBase {
@@ -26,6 +28,8 @@ export interface Machine extends EquipementBase {
   dateAcquisition?: string;
   intervalleMaintenanceJours?: number;
   caution?: number;
+  employeAffecteId?: string | null;
+  employeAffecteNom?: string | null;
 }
 
 export interface ArticleQuincaillerie extends EquipementBase {

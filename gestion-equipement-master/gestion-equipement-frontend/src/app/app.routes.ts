@@ -20,6 +20,7 @@ export const routes: Routes = [
       {
         path: 'categories',
         loadComponent: () => import('./features/categories/categories.component').then((m) => m.CategoriesComponent),
+        canActivate: [roleGuard(RoleEmploye.ADMINISTRATEUR, RoleEmploye.MAGASINIER)],
       },
       {
         path: 'machines',
@@ -32,14 +33,32 @@ export const routes: Routes = [
       {
         path: 'clients',
         loadComponent: () => import('./features/clients/clients.component').then((m) => m.ClientsComponent),
+        canActivate: [roleGuard(RoleEmploye.ADMINISTRATEUR, RoleEmploye.MAGASINIER, RoleEmploye.COMPTABLE)],
+      },
+      {
+        path: 'fournisseurs',
+        loadComponent: () => import('./features/clients/clients.component').then((m) => m.ClientsComponent),
+        canActivate: [roleGuard(RoleEmploye.ADMINISTRATEUR, RoleEmploye.MAGASINIER, RoleEmploye.COMPTABLE)],
       },
       {
         path: 'locations',
         loadComponent: () => import('./features/locations/locations.component').then((m) => m.LocationsComponent),
+        canActivate: [roleGuard(RoleEmploye.ADMINISTRATEUR, RoleEmploye.MAGASINIER)],
+      },
+      {
+        path: 'locations-fournisseurs',
+        loadComponent: () => import('./features/locations/locations.component').then((m) => m.LocationsComponent),
+        canActivate: [roleGuard(RoleEmploye.ADMINISTRATEUR, RoleEmploye.MAGASINIER)],
       },
       {
         path: 'ventes',
         loadComponent: () => import('./features/ventes/ventes.component').then((m) => m.VentesComponent),
+        canActivate: [roleGuard(RoleEmploye.ADMINISTRATEUR, RoleEmploye.MAGASINIER, RoleEmploye.COMPTABLE)],
+      },
+      {
+        path: 'achats',
+        loadComponent: () => import('./features/ventes/ventes.component').then((m) => m.VentesComponent),
+        canActivate: [roleGuard(RoleEmploye.ADMINISTRATEUR, RoleEmploye.MAGASINIER, RoleEmploye.COMPTABLE)],
       },
       {
         path: 'employes',

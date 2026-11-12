@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/locations")
+@RequestMapping({"/api/locations", "/api/locations-fournisseurs"})
 @RequiredArgsConstructor
 public class LocationController {
 

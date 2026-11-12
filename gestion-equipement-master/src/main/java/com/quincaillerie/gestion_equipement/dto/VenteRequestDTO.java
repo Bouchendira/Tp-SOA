@@ -12,7 +12,7 @@ import java.util.UUID;
 @Data
 public class VenteRequestDTO {
 
-    @NotNull(message = "Le client est obligatoire")
+    @NotNull(message = "Le fournisseur est obligatoire")
     private UUID clientId;
 
     @NotNull(message = "Le mode de paiement est obligatoire")
@@ -20,7 +20,7 @@ public class VenteRequestDTO {
 
     private Double fraisTransport;
 
-    @NotEmpty(message = "Une vente doit comporter au moins une ligne")
+    @NotEmpty(message = "Un achat doit comporter au moins une ligne")
     @Valid
     private List<LigneVenteRequestDTO> lignes;
 }

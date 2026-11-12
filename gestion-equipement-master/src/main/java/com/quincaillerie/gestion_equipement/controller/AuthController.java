@@ -32,7 +32,9 @@ public class AuthController {
 
         return new LoginResponseDTO(
                 token,
+                employeDetails.getEmploye().getId(),
                 employeDetails.getEmploye().getNom(),
+                employeDetails.getEmploye().getEmail(),
                 employeDetails.getEmploye().getRole()
         );
     }

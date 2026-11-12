@@ -33,6 +33,7 @@ export class BadgeComponent {
 
   private palette: Record<string, { bg: string; fg: string }> = {
     DISPONIBLE: { bg: 'var(--ok-soft)', fg: 'var(--ok)' },
+    A_COMMANDER: { bg: 'var(--warn-soft)', fg: 'var(--warn)' },
     EN_COURS: { bg: 'var(--ok-soft)', fg: 'var(--ok)' },
     ADMINISTRATEUR: { bg: 'var(--accent-soft)', fg: 'var(--accent)' },
     LOUE: { bg: 'var(--warn-soft)', fg: 'var(--warn)' },
@@ -41,6 +42,7 @@ export class BadgeComponent {
     VENDU: { bg: 'var(--neutral-soft)', fg: 'var(--ink-soft)' },
     TERMINEE: { bg: 'var(--neutral-soft)', fg: 'var(--ink-soft)' },
     RETIRE: { bg: 'var(--danger-soft)', fg: 'var(--danger)' },
+    RETOURNE_FOURNISSEUR: { bg: 'var(--neutral-soft)', fg: 'var(--ink-soft)' },
     ANNULEE: { bg: 'var(--danger-soft)', fg: 'var(--danger)' },
   };
 

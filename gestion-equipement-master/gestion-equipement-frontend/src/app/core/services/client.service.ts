@@ -1,13 +1,13 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
-import { MockCrudService } from './mock-crud.service';
+import { ApiCrudService } from './api-crud.service';
 import { Client, TypeClient } from '../models/client.model';
 
 @Injectable({ providedIn: 'root' })
-export class ClientService extends MockCrudService<Client> {
+export class ClientService extends ApiCrudService<Client> {
   constructor(http: HttpClient) {
-    super(http, 'assets/data/clients.json');
+    super(http, '/api/fournisseurs');
   }
 
   /**
@@ -18,10 +18,10 @@ export class ClientService extends MockCrudService<Client> {
    */
   private validateBusinessRules(data: Omit<Client, 'id'>): string | null {
     if (data.typeClient === TypeClient.ENTREPRISE && !data.matriculeFiscal?.trim()) {
-      return 'Le matricule fiscal est obligatoire pour un client de type ENTREPRISE';
+      return 'Le matricule fiscal est obligatoire pour un fournisseur de type ENTREPRISE';
     }
     if (data.typeClient === TypeClient.PARTICULIER && !data.cin?.trim()) {
-      return 'Le CIN est obligatoire pour un client de type PARTICULIER';
+      return 'Le CIN est obligatoire pour un fournisseur de type PARTICULIER';
     }
     return null;
   }
@@ -31,8 +31,7 @@ export class ClientService extends MockCrudService<Client> {
     if (error) {
       return throwError(() => new Error(error));
     }
-    const client: Client = { ...data, id: this.generateId('cli') };
-    return this.create(client);
+    return this.create(data);
   }
 
   updateClient(id: string, data: Omit<Client, 'id'>): Observable<Client | undefined> {

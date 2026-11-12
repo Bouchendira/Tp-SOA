@@ -2,6 +2,7 @@ package com.quincaillerie.gestion_equipement.controller;
 
 import com.quincaillerie.gestion_equipement.dto.EmployeRequestDTO;
 import com.quincaillerie.gestion_equipement.dto.EmployeResponseDTO;
+import com.quincaillerie.gestion_equipement.dto.EmployeUpdateRequestDTO;
 import com.quincaillerie.gestion_equipement.service.EmployeService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,13 @@ public class EmployeController {
     @ResponseStatus(HttpStatus.CREATED)
     public EmployeResponseDTO create(@Valid @RequestBody EmployeRequestDTO dto) {
         return employeService.create(dto);
+    }
+
+    @PutMapping("/{id}")
+    public EmployeResponseDTO update(
+            @PathVariable UUID id,
+            @Valid @RequestBody EmployeUpdateRequestDTO dto) {
+        return employeService.update(id, dto);
     }
 
     @DeleteMapping("/{id}")

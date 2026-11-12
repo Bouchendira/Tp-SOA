@@ -1,10 +1,13 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
-import { MockCrudService } from './mock-crud.service';
-import { LigneVente, ModePaiement, Vente } from '../models/vente.model';
+import { ApiCrudService } from './api-crud.service';
+import { ModePaiement, Vente } from '../models/vente.model';
 import { ClientService } from './client.service';
-import { AuthService } from './auth.service';
+import { MachineService } from './machine.service';
+import { ArticleQuincaillerieService } from './article-quincaillerie.service';
+import { EtatEquipement, EquipementBase, Machine } from '../models/equipement.model';
+import { tap } from 'rxjs/operators';
 
 export interface CreateVenteLigneInput {
   equipementId: string;
@@ -22,63 +25,81 @@ export interface CreateVenteInput {
 }
 
 @Injectable({ providedIn: 'root' })
-export class VenteService extends MockCrudService<Vente> {
-  constructor(http: HttpClient, private clientService: ClientService, private authService: AuthService) {
-    super(http, 'assets/data/ventes.json');
+export class VenteService extends ApiCrudService<Vente> {
+  constructor(
+    http: HttpClient,
+    private clientService: ClientService,
+    private machineService: MachineService,
+    private articleService: ArticleQuincaillerieService
+  ) {
+    super(http, '/api/achats');
   }
 
   /**
-   * Mirrors the Vente / LigneVente composition from the class diagram: a
-   * sale requires at least one line, and its totals are computed from
-   * those lines rather than entered directly (see chap3_conception.tex,
-   * section on the association class LigneVente).
+   * Purchase totals are computed from catalogue prices and received
+   * quantities are added back into inventory.
    */
   createVente(input: CreateVenteInput): Observable<Vente> {
     if (!input.lignes.length) {
-      return throwError(() => new Error('Une vente doit comporter au moins une ligne'));
+      return throwError(() => new Error('Un achat doit comporter au moins une ligne'));
     }
 
     const client = this.clientService.getById(input.clientId);
     if (!client) {
-      return throwError(() => new Error('Client introuvable'));
+      return throwError(() => new Error('Fournisseur introuvable'));
     }
 
-    const lignes: LigneVente[] = input.lignes.map((l, i) => ({
-      id: this.generateId(`lv-${i}`),
-      equipementId: l.equipementId,
-      equipementNom: l.equipementNom,
-      quantite: l.quantite,
-      prixUnitaireHT: l.prixUnitaireHT,
-      tauxTVA: l.tauxTVA,
-    }));
+    const catalogue: Array<{ machine?: Machine; article?: EquipementBase & { quantiteStock: number } }> = [];
+    const seenEquipementIds = new Set<string>();
+    for (const line of input.lignes) {
+      if (seenEquipementIds.has(line.equipementId)) {
+        return throwError(() => new Error('Un equipement peut figurer une seule fois dans un achat'));
+      }
+      seenEquipementIds.add(line.equipementId);
 
-    const montantTotalHT = lignes.reduce((sum, l) => sum + l.quantite * l.prixUnitaireHT, 0);
-    const montantTotalTVA = lignes.reduce(
-      (sum, l) => sum + l.quantite * l.prixUnitaireHT * (l.tauxTVA / 100),
-      0
-    );
+      if (!Number.isInteger(line.quantite) || line.quantite < 1) {
+        return throwError(() => new Error('La quantite achetee doit etre un entier positif'));
+      }
 
-    const currentUser = this.authService.currentUser();
+      const machine = this.machineService.getById(line.equipementId);
+      const article = this.articleService.getById(line.equipementId);
+      if (!machine && !article) {
+        return throwError(() => new Error(`Equipement introuvable: ${line.equipementId}`));
+      }
+      if (machine && (line.quantite !== 1 || !canPurchaseMachine(machine))) {
+        return throwError(() => new Error(`La machine "${machine.nom}" ne peut pas etre ajoutee a cet achat`));
+      }
 
-    const vente: Vente = {
-      id: this.generateId('ven'),
-      date: new Date().toISOString().slice(0, 10),
+      catalogue.push({ machine, article });
+    }
+    return this.createRequest({
       clientId: client.id,
-      clientNom: client.nom,
-      employeId: currentUser?.id ?? '',
-      employeNom: currentUser?.nom ?? '',
       modePaiement: input.modePaiement,
-      fraisTransport: input.fraisTransport ?? 0,
-      lignes,
-      montantTotalHT: round2(montantTotalHT),
-      montantTotalTVA: round2(montantTotalTVA),
-      montantTotalTTC: round2(montantTotalHT + montantTotalTVA + (input.fraisTransport ?? 0)),
-    };
-
-    return this.create(vente);
+      fraisTransport: input.fraisTransport,
+      lignes: input.lignes.map(({ equipementId, quantite }) => ({ equipementId, quantite })),
+    }).pipe(
+      tap(() => {
+        for (const [index, item] of catalogue.entries()) {
+          const line = input.lignes[index];
+          if (item.machine) {
+            this.machineService.updateLocal(item.machine.id, { etat: EtatEquipement.DISPONIBLE });
+          } else if (item.article) {
+            this.articleService.updateLocal(item.article.id, {
+              quantiteStock: item.article.quantiteStock + line.quantite,
+              etat: EtatEquipement.DISPONIBLE,
+            });
+          }
+        }
+      })
+    );
   }
 }
 
-function round2(n: number): number {
-  return Math.round(n * 100) / 100;
+function canPurchaseMachine(machine: Machine): boolean {
+  return [
+    EtatEquipement.A_COMMANDER,
+    EtatEquipement.VENDU,
+    EtatEquipement.RETIRE,
+    EtatEquipement.RETOURNE_FOURNISSEUR,
+  ].includes(machine.etat);
 }

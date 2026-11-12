@@ -1,77 +1,46 @@
-# Gestion Equipement - Frontend (prototype)
+# Gestion Equipement - Frontend
 
-Prototype Angular pour l'application de gestion de location et vente
-d'equipement (quincaillerie et machinerie). Fonctionne entierement sur des
-donnees mock (fichiers JSON locaux) en attendant la connexion au backend
-Spring Boot.
+Angular frontend for the equipment, supplier, purchase, and rental management
+application. The application reads and writes data through the Spring Boot API;
+the JSON files under `src/assets/data/` are no longer used as application data.
 
-## Mise en route
+## Run locally
 
-**Option A - projet deja existant (`ng new` fait ailleurs)**
-Copiez le contenu de `src/app/`, `src/assets/data/`, `src/styles.css` et
-`src/index.html` dans votre projet Angular existant, en ecrasant les
-fichiers par defaut.
+1. Configure the backend database and JWT settings in the root `.env` file.
+2. Start the Spring Boot backend on `http://localhost:8080`.
+3. From this directory, run:
 
-**Option B - reconstituer ce projet tel quel**
-```bash
-npm install
-ng serve
-```
-Puis ouvrez http://localhost:4200. Testez avec l'un des comptes listes sur
-l'ecran de connexion (mot de passe commun : `Password123!`).
+   ```bash
+   npm install
+   npm start
+   ```
 
-## Architecture
+The Angular development server proxies `/api` requests to the backend on port
+8080. Sign in with an employee account already stored in the backend database.
 
-```
-src/app/
-  core/
-    models/      interfaces TypeScript + enums, alignes sur les DTOs Java
-    services/    logique metier + acces aux donnees (mock pour l'instant)
-    guards/       authGuard (connexion requise) et roleGuard (par role)
-  shared/
-    components/  navbar, barre de recherche, badge de statut, shell de mise en page
-  features/
-    login/ dashboard/ categories/ machines/ articles/
-    clients/ employes/ locations/ ventes/
-```
+## API integration
 
-Chaque page "liste" suit le meme schema : `app-search-bar` +
-`computed()` pour le filtrage + tableau + modale de creation/edition.
+The frontend uses these endpoints:
 
-## Donnees mock -> backend reel
+| Feature | Endpoints |
+| --- | --- |
+| Authentication | `POST /api/auth/login` |
+| Categories | `/api/categories` |
+| Machines | `/api/machines` and machine state/assignment actions |
+| Articles | `/api/articles-quincaillerie` |
+| Suppliers | `/api/fournisseurs` |
+| Employees | `/api/employes` |
+| Supplier rentals | `/api/locations-fournisseurs` |
+| Purchases | `/api/achats` |
 
-Chaque service etend `MockCrudService<T>` (voir
-`core/services/mock-crud.service.ts`), qui charge un fichier JSON une
-seule fois puis garde tout en memoire (les modifications ne survivent
-pas a un rafraichissement de page - c'est normal pour un prototype).
+The login token is stored for the browser session and automatically attached to
+API requests. In production, route `/api` to the Spring Boot backend on the
+same origin (or configure an equivalent reverse proxy). The backend JWT lifetime
+is configured by `JWT_EXPIRATION_MS` in the root `.env` file (1 hour by default).
 
-Pour connecter un service au vrai backend :
+On backend startup, an idempotent schema migration makes the daily machine
+rental price nullable for existing PostgreSQL databases.
 
-1. Remplacer l'URL du constructeur (`assets/data/xxx.json`) par l'URL
-   reelle de l'API (`http://localhost:8080/api/xxx`).
-2. Remplacer les methodes `create`/`update`/`delete` de
-   `MockCrudService` par de vrais appels `this.http.post/put/delete(...)`
-   vers l'API (les signatures publiques utilisees par les composants
-   n'ont pas besoin de changer).
-3. Ajouter un intercepteur HTTP qui attache le token JWT
-   (`Authorization: Bearer ...`) a chaque requete - `AuthService` devra
-   alors stocker le vrai token recu de `/api/auth/login` au lieu de
-   l'utilisateur simule.
-4. Les regles metier dupliquees ici (verification de disponibilite
-   d'une machine, validation matricule fiscal/CIN selon le type de
-   client, calcul des totaux de vente) existent deja cote backend - une
-   fois connecte, elles deviennent redondantes cote frontend mais
-   peuvent rester comme validation "optimiste" cote client pour un
-   retour immediat a l'utilisateur, tant que le backend reste la
-   source de verite finale.
-
-## Limitations connues du prototype
-
-- Pas de persistance reelle (donnees reinitialisees au rechargement).
-- Le mot de passe est stocke et compare en clair dans
-  `EmployeService`/`AuthService` - le vrai backend utilise BCrypt et ne
-  renvoie jamais le mot de passe (voir le commentaire dans
-  `employe.model.ts`). Ne jamais reproduire ce pattern cote backend.
-- Pas de gestion des entites secondaires du diagramme de classes complet
-  (Entrepot, Adresse, Fournisseur, Maintenance, Paiement, Affectation) -
-  hors scope du prototype, a ajouter si le temps du stage le permet.
+API errors use a consistent JSON response. The frontend translates common
+connection, validation, authentication, permission, missing-resource, and
+conflict errors into clear French messages, shown on the affected page or form.

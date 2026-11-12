@@ -2,9 +2,12 @@ package com.quincaillerie.gestion_equipement.controller;
 
 import com.quincaillerie.gestion_equipement.dto.MachineRequestDTO;
 import com.quincaillerie.gestion_equipement.dto.MachineResponseDTO;
+import com.quincaillerie.gestion_equipement.dto.EtatEquipementRequestDTO;
+import com.quincaillerie.gestion_equipement.dto.AffectationEquipementRequestDTO;
 import com.quincaillerie.gestion_equipement.service.MachineService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -37,6 +40,19 @@ public class MachineController {
     @PutMapping("/{id}")
     public MachineResponseDTO update(@PathVariable UUID id, @Valid @RequestBody MachineRequestDTO dto) {
         return machineService.update(id, dto);
+    }
+
+    @PatchMapping("/{id}/etat")
+    public MachineResponseDTO updateEtat(@PathVariable UUID id, @Valid @RequestBody EtatEquipementRequestDTO dto) {
+        return machineService.updateEtat(id, dto.getEtat());
+    }
+
+    @PatchMapping("/{id}/affectation")
+    public MachineResponseDTO gererAffectation(
+            @PathVariable UUID id,
+            @Valid @RequestBody AffectationEquipementRequestDTO dto,
+            Authentication authentication) {
+        return machineService.gererAffectation(id, dto.getAction(), authentication);
     }
 
     @DeleteMapping("/{id}")

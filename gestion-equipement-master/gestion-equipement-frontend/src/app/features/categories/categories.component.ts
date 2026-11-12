@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { CategorieService } from '../../core/services/categorie.service';
 import { Categorie } from '../../core/models/categorie.model';
 import { SearchBarComponent } from '../../shared/components/search-bar/search-bar.component';
+import { AuthService } from '../../core/services/auth.service';
+import { RoleEmploye } from '../../core/models/employe.model';
 
 @Component({
   selector: 'app-categories',
@@ -15,8 +17,12 @@ import { SearchBarComponent } from '../../shared/components/search-bar/search-ba
         <span class="eyebrow">Inventaire</span>
         <h1>Categories</h1>
       </div>
-      <button class="btn btn-primary" (click)="openCreate()">+ Nouvelle categorie</button>
+      @if (canManageStock()) {
+        <button class="btn btn-primary" (click)="openCreate()">+ Nouvelle categorie</button>
+      }
     </header>
+
+    @if (pageError()) { <p class="hint" role="alert">{{ pageError() }}</p> }
 
     <div class="flex-between" style="margin-bottom:14px">
       <app-search-bar [(value)]="search" placeholder="Rechercher une categorie..."></app-search-bar>
@@ -40,8 +46,10 @@ import { SearchBarComponent } from '../../shared/components/search-bar/search-ba
                 <td><strong>{{ cat.nom }}</strong></td>
                 <td class="text-muted">{{ cat.description || '-' }}</td>
                 <td class="row-actions">
-                  <button class="btn btn-sm" (click)="openEdit(cat)">Modifier</button>
-                  <button class="btn btn-sm btn-danger" (click)="remove(cat)">Supprimer</button>
+                  @if (canManageStock()) {
+                    <button class="btn btn-sm" (click)="openEdit(cat)">Modifier</button>
+                    <button class="btn btn-sm btn-danger" (click)="remove(cat)">Supprimer</button>
+                  }
                 </td>
               </tr>
             }
@@ -60,7 +68,7 @@ import { SearchBarComponent } from '../../shared/components/search-bar/search-ba
           <div class="modal-body">
             <div class="field">
               <label>Nom</label>
-              <input [(ngModel)]="form.nom" name="nom" placeholder="Ex: Outillage electrique" />
+              <input [(ngModel)]="form.nom" name="nom" placeholder="Ex: Ordinateurs et stations de travail" />
             </div>
             <div class="field">
               <label>Description</label>
@@ -83,6 +91,7 @@ export class CategoriesComponent implements OnInit {
   modalOpen = signal(false);
   editing = signal<Categorie | null>(null);
   error = signal<string | null>(null);
+  pageError = signal<string | null>(null);
   form: { nom: string; description: string } = { nom: '', description: '' };
 
   filtered = computed(() => {
@@ -94,10 +103,17 @@ export class CategoriesComponent implements OnInit {
     );
   });
 
-  constructor(private categorieService: CategorieService) {}
+  constructor(private categorieService: CategorieService, private authService: AuthService) {}
+
+  canManageStock(): boolean {
+    return this.authService.hasRole(RoleEmploye.ADMINISTRATEUR, RoleEmploye.MAGASINIER);
+  }
 
   ngOnInit(): void {
-    this.categorieService.load().subscribe(() => this.categories.set(this.categorieService.getAll()));
+    this.categorieService.load().subscribe({
+      next: () => this.categories.set(this.categorieService.getAll()),
+      error: (err: Error) => this.pageError.set(err.message),
+    });
     this.categorieService.data$.subscribe((data) => this.categories.set(data));
   }
 
@@ -126,15 +142,23 @@ export class CategoriesComponent implements OnInit {
     }
     const editing = this.editing();
     if (editing) {
-      this.categorieService.update(editing.id, this.form).subscribe(() => this.closeModal());
+      this.categorieService.update(editing.id, this.form).subscribe({
+        next: () => this.closeModal(),
+        error: (err: Error) => this.error.set(err.message),
+      });
     } else {
-      this.categorieService.createCategorie(this.form).subscribe(() => this.closeModal());
+      this.categorieService.createCategorie(this.form).subscribe({
+        next: () => this.closeModal(),
+        error: (err: Error) => this.error.set(err.message),
+      });
     }
   }
 
   remove(cat: Categorie): void {
     if (confirm(`Supprimer la categorie "${cat.nom}" ?`)) {
-      this.categorieService.delete(cat.id).subscribe();
+      this.categorieService.delete(cat.id).subscribe({
+        error: (err: Error) => this.pageError.set(err.message),
+      });
     }
   }
 }

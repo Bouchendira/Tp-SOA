@@ -6,4 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.UUID;
 
 public interface MachineRepository extends JpaRepository<Machine, UUID> {
+    boolean existsByNumeroSerieIgnoreCase(String numeroSerie);
+    boolean existsByNumeroSerieIgnoreCaseAndIdNot(String numeroSerie, UUID id);
 }

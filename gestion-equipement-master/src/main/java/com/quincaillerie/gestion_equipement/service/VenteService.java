@@ -30,14 +30,14 @@ public class VenteService {
 
     public VenteResponseDTO getById(UUID id) {
         Vente vente = venteRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Vente introuvable avec id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Achat introuvable avec id: " + id));
         return toResponseDTO(vente);
     }
 
     @Transactional
     public VenteResponseDTO create(VenteRequestDTO dto) {
         Client client = clientRepository.findById(dto.getClientId())
-                .orElseThrow(() -> new ResourceNotFoundException("Client introuvable avec id: " + dto.getClientId()));
+                .orElseThrow(() -> new ResourceNotFoundException("Fournisseur introuvable avec id: " + dto.getClientId()));
 
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         Employe employe = employeRepository.findByEmail(email)
@@ -58,9 +58,13 @@ public class VenteService {
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Equipement introuvable avec id: " + ligneDto.getEquipementId()));
 
-            if (equipement.getEtat() == EtatEquipement.VENDU || equipement.getEtat() == EtatEquipement.RETIRE) {
+            if (ligneDto.getQuantite() < 1) {
+                throw new VenteInvalideException("La quantite achetee doit etre positive");
+            }
+            if (equipement instanceof Machine machine
+                    && (ligneDto.getQuantite() != 1 || !peutEtreAchetee(machine))) {
                 throw new VenteInvalideException(
-                        "L'equipement '" + equipement.getNom() + "' n'est plus disponible a la vente");
+                        "La machine '" + equipement.getNom() + "' ne peut pas etre ajoutee a cet achat");
             }
 
             // Prix et TVA toujours pris depuis l'equipement, jamais depuis la requete client.
@@ -75,7 +79,7 @@ public class VenteService {
             totalHT += ligne.getQuantite() * ligne.getPrixUnitaireHT();
             totalTVA += ligne.getQuantite() * ligne.getPrixUnitaireHT() * (ligne.getTauxTVA() / 100);
 
-            appliquerImpactStock(equipement, ligneDto.getQuantite());
+            appliquerEntreeStock(equipement, ligneDto.getQuantite());
         }
 
         vente.setMontantTotalHT(round2(totalHT));
@@ -87,23 +91,23 @@ public class VenteService {
     }
 
     /**
-     * Une Machine vendue passe a VENDU (elle n'est plus un bien de
-     * location). Un ArticleQuincaillerie voit son stock decremente, et
-     * repasse a RETIRE si le stock atteint zero - meme logique que
-     * ArticleQuincaillerieService#create.
+     * Purchased machines return to the company's inventory. Purchased
+     * articles increase their on-hand quantity.
      */
-    private void appliquerImpactStock(Equipement equipement, int quantiteVendue) {
+    private boolean peutEtreAchetee(Machine machine) {
+        return machine.getEtat() == EtatEquipement.A_COMMANDER
+                || machine.getEtat() == EtatEquipement.VENDU
+                || machine.getEtat() == EtatEquipement.RETIRE
+                || machine.getEtat() == EtatEquipement.RETOURNE_FOURNISSEUR;
+    }
+
+    private void appliquerEntreeStock(Equipement equipement, int quantiteAchetee) {
         if (equipement instanceof Machine machine) {
-            machine.setEtat(EtatEquipement.VENDU);
+            machine.setEtat(EtatEquipement.DISPONIBLE);
         } else if (equipement instanceof ArticleQuincaillerie article) {
-            int nouveauStock = article.getQuantiteStock() - quantiteVendue;
-            if (nouveauStock < 0) {
-                throw new VenteInvalideException(
-                        "Stock insuffisant pour '" + article.getNom() + "' (disponible: "
-                                + article.getQuantiteStock() + ")");
-            }
+            int nouveauStock = article.getQuantiteStock() + quantiteAchetee;
             article.setQuantiteStock(nouveauStock);
-            article.setEtat(nouveauStock > 0 ? EtatEquipement.DISPONIBLE : EtatEquipement.RETIRE);
+            article.setEtat(EtatEquipement.DISPONIBLE);
         }
         equipementRepository.save(equipement);
     }

@@ -28,14 +28,16 @@ const EMPTY_FORM: LocationForm = {
   template: `
     <header class="page-header">
       <div>
-        <span class="eyebrow">Activite</span>
-        <h1>Locations</h1>
+        <span class="eyebrow">Approvisionnement</span>
+        <h1>Locations fournisseurs</h1>
       </div>
       <button class="btn btn-primary" (click)="openCreate()">+ Nouvelle location</button>
     </header>
 
+    @if (pageError()) { <p class="hint" role="alert">{{ pageError() }}</p> }
+
     <div class="flex-between" style="margin-bottom:14px">
-      <app-search-bar [(value)]="search" placeholder="Rechercher par client, machine..."></app-search-bar>
+      <app-search-bar [(value)]="search" placeholder="Rechercher par fournisseur, machine..."></app-search-bar>
       <span class="text-muted" style="font-size:12.5px">{{ filtered().length }} resultat(s)</span>
     </div>
 
@@ -48,7 +50,7 @@ const EMPTY_FORM: LocationForm = {
       } @else {
         <table>
           <thead>
-            <tr><th>Client</th><th>Machine</th><th>Debut</th><th>Fin prevue</th><th>Retour</th><th>Statut</th><th></th></tr>
+            <tr><th>Fournisseur</th><th>Equipement</th><th>Debut</th><th>Fin prevue</th><th>Retour fournisseur</th><th>Statut</th><th></th></tr>
           </thead>
           <tbody>
             @for (loc of filtered(); track loc.id) {
@@ -61,7 +63,7 @@ const EMPTY_FORM: LocationForm = {
                 <td><app-badge [value]="loc.statut"></app-badge></td>
                 <td class="row-actions">
                   @if (loc.statut === 'EN_COURS') {
-                    <button class="btn btn-sm" (click)="retour(loc)">Marquer retournee</button>
+                    <button class="btn btn-sm" (click)="retour(loc)">Retourner au fournisseur</button>
                   }
                 </td>
               </tr>
@@ -81,16 +83,16 @@ const EMPTY_FORM: LocationForm = {
           <div class="modal-body">
             <div class="form-grid">
               <div class="field">
-                <label>Client</label>
+                <label>Fournisseur</label>
                 <select [(ngModel)]="form.clientId" name="clientId">
                   <option value="" disabled>Choisir...</option>
-                  @for (c of clients(); track c.id) {
-                    <option [value]="c.id">{{ c.nom }}</option>
+                  @for (f of clients(); track f.id) {
+                    <option [value]="f.id">{{ f.nom }}</option>
                   }
                 </select>
               </div>
               <div class="field">
-                <label>Machine (disponibles uniquement)</label>
+                <label>Equipement disponible a louer</label>
                 <select [(ngModel)]="form.machineId" name="machineId">
                   <option value="" disabled>Choisir...</option>
                   @for (m of machinesDisponibles(); track m.id) {
@@ -98,7 +100,7 @@ const EMPTY_FORM: LocationForm = {
                   }
                 </select>
                 @if (machinesDisponibles().length === 0) {
-                  <span class="hint">Aucune machine disponible actuellement</span>
+                  <span class="hint">Aucun equipement disponible actuellement</span>
                 }
               </div>
               <div class="field">
@@ -143,6 +145,7 @@ export class LocationsComponent implements OnInit {
   machines = signal<Machine[]>([]);
   modalOpen = signal(false);
   error = signal<string | null>(null);
+  pageError = signal<string | null>(null);
   form: LocationForm = { ...EMPTY_FORM };
 
   filtered = computed(() => {
@@ -165,6 +168,8 @@ export class LocationsComponent implements OnInit {
   ngOnInit(): void {
     forkJoin([this.locationService.load(), this.clientService.load(), this.machineService.load()]).subscribe(() => {
       this.clients.set(this.clientService.getAll());
+    }, (err: Error) => {
+      this.pageError.set(err.message);
     });
     this.locationService.data$.subscribe((data) => this.locations.set(data));
     this.machineService.data$.subscribe((data) => this.machines.set(data));
@@ -182,7 +187,7 @@ export class LocationsComponent implements OnInit {
 
   save(): void {
     if (!this.form.clientId || !this.form.machineId || !this.form.dateDebut || !this.form.dateFinPrevue) {
-      this.error.set('Client, machine et dates sont obligatoires');
+      this.error.set('Fournisseur, machine et dates sont obligatoires');
       return;
     }
     this.error.set(null);
@@ -203,8 +208,10 @@ export class LocationsComponent implements OnInit {
   }
 
   retour(loc: Location): void {
-    if (confirm(`Marquer la location de "${loc.machineNom}" comme retournee aujourd'hui ?`)) {
-      this.locationService.terminerLocation(loc.id).subscribe();
+    if (confirm(`Confirmer le retour de "${loc.machineNom}" au fournisseur aujourd'hui ?`)) {
+      this.locationService.terminerLocation(loc.id).subscribe({
+        error: (err: Error) => this.pageError.set(err.message),
+      });
     }
   }
 }

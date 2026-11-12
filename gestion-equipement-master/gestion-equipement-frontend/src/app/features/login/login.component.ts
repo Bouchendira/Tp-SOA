@@ -12,11 +12,7 @@ import { AuthService } from '../../core/services/auth.service';
     <div class="login-screen">
       <div class="login-card">
         <div class="login-brand">
-          <span class="brand-mark">QM</span>
-          <div>
-            <div class="brand-name">Quincaillerie</div>
-            <div class="brand-sub">&amp; Machinerie</div>
-          </div>
+          <img class="brand-logo" src="assets/logo_isi.png" alt="Institut Superieur Informatique" />
         </div>
 
         <h1>Connexion</h1>
@@ -41,16 +37,6 @@ import { AuthService } from '../../core/services/auth.service';
           </button>
         </form>
 
-        <div class="demo-accounts">
-          <div class="demo-title">Comptes de demonstration (prototype)</div>
-          <ul>
-            <li><span class="mono">admin&#64;quincaillerie.tn</span> - Administrateur</li>
-            <li><span class="mono">magasinier&#64;quincaillerie.tn</span> - Magasinier</li>
-            <li><span class="mono">agent&#64;quincaillerie.tn</span> - Agent</li>
-            <li><span class="mono">comptable&#64;quincaillerie.tn</span> - Comptable</li>
-          </ul>
-          <div class="text-muted" style="font-size:12px">Mot de passe pour tous : <span class="mono">Password123!</span></div>
-        </div>
       </div>
     </div>
   `,
@@ -58,8 +44,8 @@ import { AuthService } from '../../core/services/auth.service';
     .login-screen {
       min-height: 100vh;
       display: flex; align-items: center; justify-content: center;
-      background: var(--ink);
-      background-image: linear-gradient(160deg, var(--ink) 0%, #2a323b 100%);
+      background: var(--bg);
+      background-image: linear-gradient(135deg, #eaf2f8 0%, #ffffff 58%, #e8f4ee 100%);
       padding: 20px;
     }
     .login-card {
@@ -70,28 +56,8 @@ import { AuthService } from '../../core/services/auth.service';
       max-width: 400px;
       padding: 32px 32px 24px;
     }
-    .login-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; }
-    .brand-mark {
-      background: var(--accent); color: #fff;
-      font-family: var(--font-display); font-weight: 700; font-size: 16px;
-      width: 38px; height: 38px;
-      display: flex; align-items: center; justify-content: center;
-      border-radius: 4px;
-    }
-    .brand-name { font-family: var(--font-display); text-transform: uppercase; font-size: 16px; line-height: 1.1; }
-    .brand-sub { font-size: 11px; color: var(--muted); }
-    .demo-accounts {
-      margin-top: 22px;
-      padding-top: 16px;
-      border-top: 1px solid var(--border);
-    }
-    .demo-title {
-      font-family: var(--font-mono); font-size: 10.5px;
-      text-transform: uppercase; letter-spacing: 0.06em;
-      color: var(--muted); margin-bottom: 8px;
-    }
-    .demo-accounts ul { list-style: none; padding: 0; margin: 0 0 8px; font-size: 12.5px; }
-    .demo-accounts li { padding: 2px 0; }
+    .login-brand { display: flex; align-items: center; justify-content: center; margin-bottom: 24px; }
+    .brand-logo { display: block; width: 100%; max-width: 250px; height: auto; }
   `]
 })
 export class LoginComponent {

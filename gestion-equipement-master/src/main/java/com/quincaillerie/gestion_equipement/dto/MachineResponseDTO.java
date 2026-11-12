@@ -25,4 +25,6 @@ public class MachineResponseDTO {
     private LocalDate dateAcquisition;
     private Integer intervalleMaintenanceJours;
     private Double caution;
+    private UUID employeAffecteId;
+    private String employeAffecteNom;
 }

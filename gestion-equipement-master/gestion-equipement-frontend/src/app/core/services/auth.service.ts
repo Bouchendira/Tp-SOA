@@ -1,11 +1,12 @@
 import { Injectable, PLATFORM_ID, inject, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { Observable, throwError, of } from 'rxjs';
-import { delay, map, switchMap } from 'rxjs/operators';
-import { EmployeService } from './employe.service';
-import { Employe, RoleEmploye } from '../models/employe.model';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
+import { RoleEmploye } from '../models/employe.model';
 
 const STORAGE_KEY = 'gestion-equipement.currentUser';
+export const TOKEN_STORAGE_KEY = 'gestion-equipement.token';
 
 export interface AuthenticatedUser {
   id: string;
@@ -14,19 +15,10 @@ export interface AuthenticatedUser {
   role: RoleEmploye;
 }
 
-/**
- * PROTOTYPE ONLY. Simulates POST /api/auth/login against the local
- * employe mock data instead of calling the real Spring Boot endpoint,
- * and stores a fake "session" in localStorage so a page refresh keeps
- * the user logged in (same UX as the real JWT-based flow will have,
- * just without an actual signed token to validate).
- *
- * SSR NOTE: localStorage does not exist on the server. Every access is
- * guarded behind isPlatformBrowser() so this service is safe to inject
- * during server-side rendering (it just behaves as "logged out" on the
- * server, which is correct - the real session state only matters once
- * the app hydrates in the browser).
- */
+interface LoginResponse extends AuthenticatedUser {
+  token: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private platformId = inject(PLATFORM_ID);
@@ -35,7 +27,7 @@ export class AuthService {
   private currentUserSignal = signal<AuthenticatedUser | null>(this.readFromStorage());
   readonly user = this.currentUserSignal.asReadonly();
 
-  constructor(private employeService: EmployeService) {}
+  constructor(private http: HttpClient) {}
 
   currentUser(): AuthenticatedUser | null {
     return this.currentUserSignal();
@@ -51,29 +43,12 @@ export class AuthService {
   }
 
   login(email: string, motDePasse: string): Observable<AuthenticatedUser> {
-    return this.employeService.load().pipe(
-      switchMap(() => {
-        const employe: Employe | undefined = this.employeService
-          .getAll()
-          .find((e) => e.email.toLowerCase() === email.toLowerCase());
-
-        if (!employe || employe.motDePasse !== motDePasse) {
-          return throwError(() => new Error('Email ou mot de passe incorrect'));
-        }
-
-        const user: AuthenticatedUser = {
-          id: employe.id,
-          nom: employe.nom,
-          email: employe.email,
-          role: employe.role,
-        };
-        return of(user);
-      }),
-      delay(300),
-      map((user) => {
+    return this.http.post<LoginResponse>('/api/auth/login', { email, motDePasse }).pipe(
+      map(({ token, ...user }) => {
         this.currentUserSignal.set(user);
         if (this.isBrowser) {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+          localStorage.setItem(TOKEN_STORAGE_KEY, token);
         }
         return user;
       })
@@ -84,6 +59,7 @@ export class AuthService {
     this.currentUserSignal.set(null);
     if (this.isBrowser) {
       localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(TOKEN_STORAGE_KEY);
     }
   }
 
@@ -91,6 +67,12 @@ export class AuthService {
     if (!this.isBrowser) {
       return null;
     }
+
+    if (!localStorage.getItem(TOKEN_STORAGE_KEY)) {
+      localStorage.removeItem(STORAGE_KEY);
+      return null;
+    }
+
     const raw = localStorage.getItem(STORAGE_KEY);
     return raw ? (JSON.parse(raw) as AuthenticatedUser) : null;
   }

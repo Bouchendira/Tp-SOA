@@ -10,9 +10,9 @@
     "fraisTransport": 40,
     "modeLivraison": "LIVRAISON",
     "clientId": "cli-1",
-    "clientNom": "Ste BTP Exemple",
+    "clientNom": "Fournitures BTP Exemple",
     "machineId": "mac-1",
-    "machineNom": "Betonniere 350L",
+    "machineNom": "Ordinateur portable de developpement",
     "employeId": "emp-3",
     "employeNom": "Yosra Chaabane"
   },
@@ -27,9 +27,9 @@
     "fraisTransport": 0,
     "modeLivraison": "RETRAIT",
     "clientId": "cli-2",
-    "clientNom": "Chantiers du Sud SARL",
+    "clientNom": "Materiaux du Sud SARL",
     "machineId": "mac-2",
-    "machineNom": "Compacteur a plaque",
+    "machineNom": "Ecran professionnel 27 pouces",
     "employeId": "emp-3",
     "employeNom": "Yosra Chaabane"
   },
@@ -44,9 +44,9 @@
     "fraisTransport": 20,
     "modeLivraison": "LIVRAISON",
     "clientId": "cli-3",
-    "clientNom": "Karim Jaziri",
+    "clientNom": "Jaziri Equipements",
     "machineId": "mac-4",
-    "machineNom": "Marteau-piqueur",
+    "machineNom": "Serveur de test",
     "employeId": "emp-3",
     "employeNom": "Yosra Chaabane"
   }

@@ -28,7 +28,7 @@ public class ClientService {
 
     public ClientResponseDTO getById(UUID id) {
         Client client = clientRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Client introuvable avec id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Fournisseur introuvable avec id: " + id));
         return toResponseDTO(client);
     }
 
@@ -44,7 +44,7 @@ public class ClientService {
 
     public ClientResponseDTO update(UUID id, ClientRequestDTO dto) {
         Client client = clientRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Client introuvable avec id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Fournisseur introuvable avec id: " + id));
 
         validateBusinessRules(dto);
         applyDtoToEntity(dto, client);
@@ -55,7 +55,7 @@ public class ClientService {
 
     public void delete(UUID id) {
         if (!clientRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Client introuvable avec id: " + id);
+            throw new ResourceNotFoundException("Fournisseur introuvable avec id: " + id);
         }
         clientRepository.deleteById(id);
     }
@@ -64,12 +64,12 @@ public class ClientService {
         if (dto.getTypeClient() == TypeClient.ENTREPRISE
                 && (dto.getMatriculeFiscal() == null || dto.getMatriculeFiscal().isBlank())) {
             throw new InvalidClientDataException(
-                    "Le matricule fiscal est obligatoire pour un client de type ENTREPRISE");
+                    "Le matricule fiscal est obligatoire pour un fournisseur de type ENTREPRISE");
         }
         if (dto.getTypeClient() == TypeClient.PARTICULIER
                 && (dto.getCin() == null || dto.getCin().isBlank())) {
             throw new InvalidClientDataException(
-                    "Le CIN est obligatoire pour un client de type PARTICULIER");
+                    "Le CIN est obligatoire pour un fournisseur de type PARTICULIER");
         }
     }
 

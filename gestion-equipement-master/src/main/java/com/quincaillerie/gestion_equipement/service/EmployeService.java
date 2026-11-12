@@ -2,8 +2,10 @@ package com.quincaillerie.gestion_equipement.service;
 
 import com.quincaillerie.gestion_equipement.dto.EmployeRequestDTO;
 import com.quincaillerie.gestion_equipement.dto.EmployeResponseDTO;
+import com.quincaillerie.gestion_equipement.dto.EmployeUpdateRequestDTO;
 import com.quincaillerie.gestion_equipement.entity.Employe;
 import com.quincaillerie.gestion_equipement.enums.RoleEmploye;
+import com.quincaillerie.gestion_equipement.exception.InvalidClientDataException;
 import com.quincaillerie.gestion_equipement.exception.ResourceNotFoundException;
 import com.quincaillerie.gestion_equipement.repository.EmployeRepository;
 import lombok.RequiredArgsConstructor;
@@ -51,6 +53,25 @@ public class EmployeService {
             throw new IllegalArgumentException("Employé existe déjà.");
 
         }
+    }
+
+    public EmployeResponseDTO update(UUID id, EmployeUpdateRequestDTO dto) {
+        Employe employe = employeRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Employe introuvable avec id: " + id));
+
+        boolean duplicate = employeRepository.findAll().stream()
+                .anyMatch(existing -> !existing.getId().equals(id)
+                        && (existing.getCin().equals(dto.getCin()) || existing.getEmail().equalsIgnoreCase(dto.getEmail())));
+        if (duplicate) {
+            throw new InvalidClientDataException("Un employe utilise deja ce CIN ou cet email");
+        }
+
+        employe.setNom(dto.getNom());
+        employe.setCin(dto.getCin());
+        employe.setEmail(dto.getEmail());
+        employe.setTelephone(dto.getTelephone());
+        employe.setRole(dto.getRole());
+        return toResponseDTO(employeRepository.save(employe));
     }
 
     public void delete(UUID id) {

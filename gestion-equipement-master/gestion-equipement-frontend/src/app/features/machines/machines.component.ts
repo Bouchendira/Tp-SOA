@@ -5,6 +5,8 @@ import { forkJoin } from 'rxjs';
 import { MachineService } from '../../core/services/machine.service';
 import { CategorieService } from '../../core/services/categorie.service';
 import { Machine, EtatEquipement } from '../../core/models/equipement.model';
+import { AuthService } from '../../core/services/auth.service';
+import { RoleEmploye } from '../../core/models/employe.model';
 import { Categorie } from '../../core/models/categorie.model';
 import { SearchBarComponent } from '../../shared/components/search-bar/search-bar.component';
 import { BadgeComponent } from '../../shared/components/badge/badge.component';
@@ -39,28 +41,32 @@ const EMPTY_FORM: MachineForm = {
     <header class="page-header">
       <div>
         <span class="eyebrow">Inventaire</span>
-        <h1>Machines</h1>
+        <h1>Equipements informatiques</h1>
       </div>
-      <button class="btn btn-primary" (click)="openCreate()">+ Nouvelle machine</button>
+      @if (canManageStock()) {
+        <button class="btn btn-primary" (click)="openCreate()">+ Nouvel equipement</button>
+      }
     </header>
 
     <div class="flex-between" style="margin-bottom:14px">
-      <app-search-bar [(value)]="search" placeholder="Rechercher par nom, marque, N/S..."></app-search-bar>
+      <app-search-bar [(value)]="search" placeholder="Rechercher par nom, marque, numero d'inventaire..."></app-search-bar>
       <span class="text-muted" style="font-size:12.5px">{{ filtered().length }} resultat(s)</span>
     </div>
+
+    @if (stateError()) { <p class="hint">{{ stateError() }}</p> }
 
     <div class="table-wrap">
       @if (filtered().length === 0) {
         <div class="empty-state">
-          <h3>Aucune machine</h3>
-          <p>Essayez un autre terme de recherche ou ajoutez-en une nouvelle.</p>
+          <h3>Aucun equipement</h3>
+          <p>Essayez un autre terme de recherche ou ajoutez-en un nouveau.</p>
         </div>
       } @else {
         <table>
           <thead>
             <tr>
-              <th>Nom</th><th>Categorie</th><th>N/S</th>
-              <th>Prix location/j</th><th>Etat</th><th></th>
+              <th>Equipement</th><th>Categorie</th><th>N° inventaire / serie</th>
+              <th>Cout location/j</th><th>Etat</th><th>Affecte a</th><th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -74,14 +80,38 @@ const EMPTY_FORM: MachineForm = {
                 <td class="mono">{{ m.numeroSerie }}</td>
                 <td class="num">{{ m.prixLocationJourHT | number:'1.2-2' }} DT</td>
                 <td><app-badge [value]="m.etat"></app-badge></td>
+                <td>{{ m.employeAffecteNom || '-' }}</td>
                 <td class="row-actions">
-                  @if (m.etat === 'EN_MAINTENANCE') {
+                  @if (canManageStock() && m.etat === 'A_COMMANDER') {
+                    <button class="btn btn-sm" (click)="changeEtat(m, 'DISPONIBLE')">Confirmer la reception</button>
+                  }
+                  @if (canManageStock() && m.etat === 'EN_MAINTENANCE') {
                     <button class="btn btn-sm" (click)="setDisponible(m)">Fin maintenance</button>
-                  } @else if (m.etat === 'DISPONIBLE') {
+                  } @else if (canManageStock() && m.etat === 'DISPONIBLE') {
                     <button class="btn btn-sm" (click)="setMaintenance(m)">Maintenance</button>
                   }
-                  <button class="btn btn-sm" (click)="openEdit(m)">Modifier</button>
-                  <button class="btn btn-sm btn-danger" (click)="remove(m)">Supprimer</button>
+                  @if (canManageStock() && canChangeState(m)) {
+                    <select #stateSelect [value]="m.etat" [name]="'etat-' + m.id"
+                      aria-label="Changer l'etat de l'equipement"
+                      (change)="changeEtat(m, stateSelect.value, stateSelect)">
+                      @for (option of etatOptions; track option.value) {
+                        <option [value]="option.value">{{ option.label }}</option>
+                      }
+                    </select>
+                  }
+                  @if (isAgent() && m.etat === 'DISPONIBLE') {
+                    <button class="btn btn-sm" (click)="takeOwnership(m)">Affecter a mon compte</button>
+                  }
+                  @if (isAgent() && isAssignedToMe(m)) {
+                    <button class="btn btn-sm" (click)="returnToStock(m)">Retourner au stock</button>
+                  }
+                  @if (canManageStock() && m.etat === 'AFFECTE') {
+                    <button class="btn btn-sm" (click)="returnToStock(m, true)">Confirmer le retour</button>
+                  }
+                  @if (canManageStock()) {
+                    <button class="btn btn-sm" (click)="openEdit(m)">Modifier</button>
+                    <button class="btn btn-sm btn-danger" (click)="remove(m)">Supprimer</button>
+                  }
                 </td>
               </tr>
             }
@@ -94,7 +124,7 @@ const EMPTY_FORM: MachineForm = {
       <div class="modal-backdrop" (click)="closeModal()">
         <div class="modal" (click)="$event.stopPropagation()" style="max-width:640px">
           <div class="modal-header">
-            <h3 class="mt-0">{{ editing() ? 'Modifier la machine' : 'Nouvelle machine' }}</h3>
+            <h3 class="mt-0">{{ editing() ? "Modifier l'equipement" : 'Nouvel equipement' }}</h3>
             <button class="modal-close" (click)="closeModal()">&times;</button>
           </div>
           <div class="modal-body">
@@ -121,7 +151,7 @@ const EMPTY_FORM: MachineForm = {
                 <input [(ngModel)]="form.modele" name="modele" />
               </div>
               <div class="field">
-                <label>Numero de serie</label>
+                <label>Numero d'inventaire / serie</label>
                 <input [(ngModel)]="form.numeroSerie" name="numeroSerie" />
               </div>
               <div class="field">
@@ -129,7 +159,7 @@ const EMPTY_FORM: MachineForm = {
                 <input type="date" [(ngModel)]="form.dateAcquisition" name="dateAcquisition" />
               </div>
               <div class="field">
-                <label>Prix de vente HT</label>
+                <label>Prix d'achat HT</label>
                 <input type="number" [(ngModel)]="form.prixVenteHT" name="prixVenteHT" />
               </div>
               <div class="field">
@@ -137,7 +167,7 @@ const EMPTY_FORM: MachineForm = {
                 <input type="number" [(ngModel)]="form.tauxTVA" name="tauxTVA" />
               </div>
               <div class="field">
-                <label>Prix location / jour HT</label>
+                <label>Cout de location / jour HT</label>
                 <input type="number" [(ngModel)]="form.prixLocationJourHT" name="prixLocationJourHT" />
               </div>
               <div class="field">
@@ -165,12 +195,19 @@ const EMPTY_FORM: MachineForm = {
   `,
 })
 export class MachinesComponent implements OnInit {
+  readonly etatOptions = [
+    { value: EtatEquipement.A_COMMANDER, label: 'A commander' },
+    { value: EtatEquipement.DISPONIBLE, label: 'Disponible en stock' },
+    { value: EtatEquipement.EN_MAINTENANCE, label: 'En maintenance' },
+    { value: EtatEquipement.RETIRE, label: 'Retire du stock' },
+  ];
   search = '';
   machines = signal<Machine[]>([]);
   categories = signal<Categorie[]>([]);
   modalOpen = signal(false);
   editing = signal<Machine | null>(null);
   error = signal<string | null>(null);
+  stateError = signal<string | null>(null);
   form: MachineForm = { ...EMPTY_FORM };
 
   filtered = computed(() => {
@@ -186,11 +223,36 @@ export class MachinesComponent implements OnInit {
     );
   });
 
-  constructor(private machineService: MachineService, private categorieService: CategorieService) {}
+  constructor(
+    private machineService: MachineService,
+    private categorieService: CategorieService,
+    private authService: AuthService
+  ) {}
+
+  canManageStock(): boolean {
+    return this.authService.hasRole(RoleEmploye.ADMINISTRATEUR, RoleEmploye.MAGASINIER);
+  }
+
+  isAgent(): boolean {
+    return this.authService.hasRole(RoleEmploye.AGENT);
+  }
+
+  isAssignedToMe(machine: Machine): boolean {
+    return machine.employeAffecteId === this.authService.currentUser()?.id;
+  }
+
+  canChangeState(machine: Machine): boolean {
+    return machine.etat !== EtatEquipement.LOUE
+      && machine.etat !== EtatEquipement.VENDU
+      && machine.etat !== EtatEquipement.AFFECTE
+      && machine.etat !== EtatEquipement.RETOURNE_FOURNISSEUR;
+  }
 
   ngOnInit(): void {
     forkJoin([this.machineService.load(), this.categorieService.load()]).subscribe(() => {
       this.categories.set(this.categorieService.getAll());
+    }, (err: Error) => {
+      this.stateError.set(err.message);
     });
     this.machineService.data$.subscribe((data) => this.machines.set(data));
   }
@@ -221,7 +283,7 @@ export class MachinesComponent implements OnInit {
 
   save(): void {
     if (!this.form.nom.trim() || !this.form.categorieId || this.form.prixVenteHT == null) {
-      this.error.set('Nom, categorie et prix de vente sont obligatoires');
+      this.error.set("Nom, categorie et cout d'acquisition sont obligatoires");
       return;
     }
     const editing = this.editing();
@@ -244,23 +306,66 @@ export class MachinesComponent implements OnInit {
       const categorie = this.categorieService.getById(payload.categorieId);
       this.machineService
         .update(editing.id, { ...payload, categorieNom: categorie?.nom })
-        .subscribe(() => this.closeModal());
+        .subscribe({
+          next: () => this.closeModal(),
+          error: (err: Error) => this.error.set(err.message),
+        });
     } else {
-      this.machineService.createMachine(payload).subscribe(() => this.closeModal());
+      this.machineService.createMachine(payload).subscribe({
+        next: () => this.closeModal(),
+        error: (err: Error) => this.error.set(err.message),
+      });
     }
   }
 
   setMaintenance(m: Machine): void {
-    this.machineService.setEnMaintenance(m.id).subscribe();
+    this.machineService.updateEtat(m.id, EtatEquipement.EN_MAINTENANCE).subscribe({
+      error: (err: Error) => this.stateError.set(err.message),
+    });
   }
 
   setDisponible(m: Machine): void {
-    this.machineService.setDisponible(m.id).subscribe();
+    this.machineService.setDisponible(m.id).subscribe({
+      error: (err: Error) => this.stateError.set(err.message),
+    });
+  }
+
+  takeOwnership(machine: Machine): void {
+    this.stateError.set(null);
+    this.machineService.prendreEnCharge(machine.id).subscribe({
+      error: (err: Error) => this.stateError.set(err.message),
+    });
+  }
+
+  returnToStock(machine: Machine, magasinier = false): void {
+    this.stateError.set(null);
+    this.machineService.retournerAuStock(machine.id, magasinier).subscribe({
+      error: (err: Error) => this.stateError.set(err.message),
+    });
+  }
+
+  changeEtat(machine: Machine, value: string, select?: HTMLSelectElement): void {
+    const etat = this.etatOptions.find((option) => option.value === value)?.value;
+    if (!etat) {
+      this.stateError.set('Etat invalide');
+      if (select) select.value = machine.etat;
+      return;
+    }
+
+    this.stateError.set(null);
+    this.machineService.updateEtat(machine.id, etat).subscribe({
+      error: (err: Error) => {
+        if (select) select.value = machine.etat;
+        this.stateError.set(err.message);
+      },
+    });
   }
 
   remove(m: Machine): void {
     if (confirm(`Supprimer la machine "${m.nom}" ?`)) {
-      this.machineService.delete(m.id).subscribe();
+      this.machineService.delete(m.id).subscribe({
+        error: (err: Error) => this.stateError.set(err.message),
+      });
     }
   }
 }

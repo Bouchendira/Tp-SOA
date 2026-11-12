@@ -8,8 +8,10 @@ import { MachineService } from '../../core/services/machine.service';
 import { ArticleQuincaillerieService } from '../../core/services/article-quincaillerie.service';
 import { Vente, ModePaiement } from '../../core/models/vente.model';
 import { Client } from '../../core/models/client.model';
-import { EquipementBase } from '../../core/models/equipement.model';
+import { EquipementBase, EtatEquipement } from '../../core/models/equipement.model';
 import { SearchBarComponent } from '../../shared/components/search-bar/search-bar.component';
+import { AuthService } from '../../core/services/auth.service';
+import { RoleEmploye } from '../../core/models/employe.model';
 
 interface DraftLigne extends CreateVenteLigneInput {}
 
@@ -20,27 +22,42 @@ interface DraftLigne extends CreateVenteLigneInput {}
   template: `
     <header class="page-header">
       <div>
-        <span class="eyebrow">Activite</span>
-        <h1>Ventes</h1>
+        <span class="eyebrow">Approvisionnement</span>
+        <h1>Achats</h1>
       </div>
-      <button class="btn btn-primary" (click)="openCreate()">+ Nouvelle vente</button>
+      @if (canRecordPurchases()) {
+        <button class="btn btn-primary" (click)="openCreate()">+ Nouvel achat</button>
+      }
     </header>
 
+    @if (pageError()) { <p class="hint" role="alert">{{ pageError() }}</p> }
+
+    <div class="stat-grid" style="margin-bottom:14px">
+      <div class="stat-card">
+        <span class="stat-value">{{ ventes().length }}</span>
+        <span class="stat-label">Achats enregistres</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value">{{ totalAchats() | number:'1.2-2' }} DT</span>
+        <span class="stat-label">Depenses TTC enregistrees</span>
+      </div>
+    </div>
+
     <div class="flex-between" style="margin-bottom:14px">
-      <app-search-bar [(value)]="search" placeholder="Rechercher par client..."></app-search-bar>
+      <app-search-bar [(value)]="search" placeholder="Rechercher par fournisseur..."></app-search-bar>
       <span class="text-muted" style="font-size:12.5px">{{ filtered().length }} resultat(s)</span>
     </div>
 
     <div class="table-wrap">
       @if (filtered().length === 0) {
         <div class="empty-state">
-          <h3>Aucune vente</h3>
-          <p>Essayez un autre terme de recherche ou creez-en une nouvelle.</p>
+          <h3>Aucun achat</h3>
+          <p>Essayez un autre terme de recherche ou creez-en un nouveau.</p>
         </div>
       } @else {
         <table>
           <thead>
-            <tr><th>Date</th><th>Client</th><th>Lignes</th><th>Mode paiement</th><th>Total TTC</th></tr>
+            <tr><th>Date</th><th>Fournisseur</th><th>Lignes</th><th>Mode paiement</th><th>Total TTC</th></tr>
           </thead>
           <tbody>
             @for (v of filtered(); track v.id) {
@@ -57,21 +74,21 @@ interface DraftLigne extends CreateVenteLigneInput {}
       }
     </div>
 
-    @if (modalOpen()) {
+    @if (canRecordPurchases() && modalOpen()) {
       <div class="modal-backdrop" (click)="closeModal()">
         <div class="modal" (click)="$event.stopPropagation()" style="max-width:680px">
           <div class="modal-header">
-            <h3 class="mt-0">Nouvelle vente</h3>
+            <h3 class="mt-0">Nouvel achat</h3>
             <button class="modal-close" (click)="closeModal()">&times;</button>
           </div>
           <div class="modal-body">
             <div class="form-grid">
               <div class="field">
-                <label>Client</label>
+                <label>Fournisseur</label>
                 <select [(ngModel)]="clientId" name="clientId">
                   <option value="" disabled>Choisir...</option>
-                  @for (c of clients(); track c.id) {
-                    <option [value]="c.id">{{ c.nom }}</option>
+                  @for (f of clients(); track f.id) {
+                    <option [value]="f.id">{{ f.nom }}</option>
                   }
                 </select>
               </div>
@@ -94,8 +111,8 @@ interface DraftLigne extends CreateVenteLigneInput {}
             <div class="field">
               <select #picker (change)="addLigne(picker.value); picker.value = ''">
                 <option value="" disabled selected>Ajouter un article/machine...</option>
-                @for (eq of equipementsVendables(); track eq.id) {
-                  <option [value]="eq.id">{{ eq.nom }} - {{ eq.prixVenteHT }} DT HT</option>
+                @for (eq of equipementsAchetables(); track eq.id) {
+                  <option [value]="eq.id">{{ eq.nom }} - {{ eq.prixVenteHT }} DT HT (achat)</option>
                 }
               </select>
             </div>
@@ -103,14 +120,14 @@ interface DraftLigne extends CreateVenteLigneInput {}
             @if (lignes().length > 0) {
               <table style="margin-bottom:12px">
                 <thead>
-                  <tr><th>Article</th><th>Qte</th><th>Prix HT</th><th>TVA</th><th></th></tr>
+                  <tr><th>Article</th><th>Qte</th><th>Prix achat HT</th><th>TVA</th><th></th></tr>
                 </thead>
                 <tbody>
                   @for (l of lignes(); track l.equipementId; let i = $index) {
                     <tr>
                       <td>{{ l.equipementNom }}</td>
                       <td style="width:80px">
-                        <input type="number" min="1" [ngModel]="l.quantite" (ngModelChange)="setQuantite(i, $event)" name="qte-{{i}}" style="width:60px" />
+                        <input type="number" min="1" [disabled]="isMachine(l.equipementId)" [ngModel]="l.quantite" (ngModelChange)="setQuantite(i, $event)" name="qte-{{i}}" style="width:60px" />
                       </td>
                       <td class="num">{{ l.prixUnitaireHT }} DT</td>
                       <td class="num">{{ l.tauxTVA }}%</td>
@@ -131,7 +148,7 @@ interface DraftLigne extends CreateVenteLigneInput {}
             @if (error()) { <p class="hint">{{ error() }}</p> }
             <div class="form-actions">
               <button class="btn" (click)="closeModal()">Annuler</button>
-              <button class="btn btn-primary" (click)="save()">Enregistrer la vente</button>
+              <button class="btn btn-primary" (click)="save()">Enregistrer l'achat</button>
             </div>
           </div>
         </div>
@@ -165,6 +182,7 @@ export class VentesComponent implements OnInit {
 
   modalOpen = signal(false);
   error = signal<string | null>(null);
+  pageError = signal<string | null>(null);
 
   clientId = '';
   modePaiement: ModePaiement = ModePaiement.ESPECES;
@@ -178,12 +196,22 @@ export class VentesComponent implements OnInit {
     return list.filter((v) => (v.clientNom ?? '').toLowerCase().includes(term));
   });
 
-  equipementsVendables = computed(() => {
+  equipementsAchetables = computed(() => {
     const chosenIds = new Set(this.lignes().map((l) => l.equipementId));
-    return this.catalogue().filter((eq) => !chosenIds.has(eq.id));
+    return this.catalogue().filter((eq) => {
+      if (chosenIds.has(eq.id)) return false;
+      const machine = this.machineService.getById(eq.id);
+      return !machine || [
+        EtatEquipement.A_COMMANDER,
+        EtatEquipement.VENDU,
+        EtatEquipement.RETIRE,
+        EtatEquipement.RETOURNE_FOURNISSEUR,
+      ].includes(machine.etat);
+    });
   });
 
   totalHT = computed(() => round2(this.lignes().reduce((sum, l) => sum + l.quantite * l.prixUnitaireHT, 0)));
+  totalAchats = computed(() => round2(this.ventes().reduce((sum, achat) => sum + achat.montantTotalTTC, 0)));
   totalTVA = computed(() =>
     round2(this.lignes().reduce((sum, l) => sum + l.quantite * l.prixUnitaireHT * (l.tauxTVA / 100), 0))
   );
@@ -193,8 +221,13 @@ export class VentesComponent implements OnInit {
     private venteService: VenteService,
     private clientService: ClientService,
     private machineService: MachineService,
-    private articleService: ArticleQuincaillerieService
+    private articleService: ArticleQuincaillerieService,
+    private authService: AuthService
   ) {}
+
+  canRecordPurchases(): boolean {
+    return this.authService.hasRole(RoleEmploye.ADMINISTRATEUR, RoleEmploye.MAGASINIER);
+  }
 
   ngOnInit(): void {
     forkJoin([
@@ -205,6 +238,8 @@ export class VentesComponent implements OnInit {
     ]).subscribe(() => {
       this.clients.set(this.clientService.getAll());
       this.catalogue.set([...this.machineService.getAll(), ...this.articleService.getAll()]);
+    }, (err: Error) => {
+      this.pageError.set(err.message);
     });
     this.venteService.data$.subscribe((data) => this.ventes.set(data));
   }
@@ -232,9 +267,16 @@ export class VentesComponent implements OnInit {
     ]);
   }
 
+  isMachine(equipementId: string): boolean {
+    return this.machineService.getById(equipementId) !== undefined;
+  }
+
   setQuantite(index: number, value: number): void {
     const next = [...this.lignes()];
-    next[index] = { ...next[index], quantite: Math.max(1, Number(value) || 1) };
+    next[index] = {
+      ...next[index],
+      quantite: this.isMachine(next[index].equipementId) ? 1 : Math.max(1, Number(value) || 1),
+    };
     this.lignes.set(next);
   }
 
@@ -244,11 +286,11 @@ export class VentesComponent implements OnInit {
 
   save(): void {
     if (!this.clientId) {
-      this.error.set('Le client est obligatoire');
+      this.error.set('Le fournisseur est obligatoire');
       return;
     }
     if (this.lignes().length === 0) {
-      this.error.set('Ajoutez au moins un article a la vente');
+      this.error.set("Ajoutez au moins un article a l'achat");
       return;
     }
     this.error.set(null);

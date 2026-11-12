@@ -54,10 +54,10 @@ public class LocationService {
                     "La date de fin prevue doit etre posterieure a la date de debut");
         }
 
-        // 2. Client existe
+        // 2. Fournisseur existe
         Client client = clientRepository.findById(dto.getClientId())
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Client introuvable avec id: " + dto.getClientId()));
+                        "Fournisseur introuvable avec id: " + dto.getClientId()));
 
         // 3. Machine existe
         Machine machine = machineRepository.findById(dto.getMachineId())
@@ -110,7 +110,7 @@ public class LocationService {
         }
 
         Machine machine = location.getMachine();
-        machine.setEtat(EtatEquipement.DISPONIBLE);
+        machine.setEtat(EtatEquipement.RETOURNE_FOURNISSEUR);
         machineRepository.save(machine);
 
         Location updated = locationRepository.save(location);

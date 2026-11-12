@@ -8,6 +8,8 @@ import { ArticleQuincaillerie } from '../../core/models/equipement.model';
 import { Categorie } from '../../core/models/categorie.model';
 import { SearchBarComponent } from '../../shared/components/search-bar/search-bar.component';
 import { BadgeComponent } from '../../shared/components/badge/badge.component';
+import { AuthService } from '../../core/services/auth.service';
+import { RoleEmploye } from '../../core/models/employe.model';
 
 interface ArticleForm {
   nom: string; description: string; marque: string;
@@ -28,10 +30,14 @@ const EMPTY_FORM: ArticleForm = {
     <header class="page-header">
       <div>
         <span class="eyebrow">Inventaire</span>
-        <h1>Quincaillerie</h1>
+        <h1>Fournitures et accessoires informatiques</h1>
       </div>
-      <button class="btn btn-primary" (click)="openCreate()">+ Nouvel article</button>
+      @if (canManageStock()) {
+        <button class="btn btn-primary" (click)="openCreate()">+ Nouvelle fourniture</button>
+      }
     </header>
+
+    @if (pageError()) { <p class="hint" role="alert">{{ pageError() }}</p> }
 
     <div class="flex-between" style="margin-bottom:14px">
       <app-search-bar [(value)]="search" placeholder="Rechercher par nom, code-barre..."></app-search-bar>
@@ -41,13 +47,13 @@ const EMPTY_FORM: ArticleForm = {
     <div class="table-wrap">
       @if (filtered().length === 0) {
         <div class="empty-state">
-          <h3>Aucun article</h3>
+          <h3>Aucune fourniture</h3>
           <p>Essayez un autre terme de recherche ou ajoutez-en un nouveau.</p>
         </div>
       } @else {
         <table>
           <thead>
-            <tr><th>Nom</th><th>Categorie</th><th>Stock</th><th>Prix HT</th><th>Etat</th><th></th></tr>
+            <tr><th>Nom</th><th>Categorie</th><th>Stock</th><th>Prix achat HT</th><th>Etat</th><th></th></tr>
           </thead>
           <tbody>
             @for (a of filtered(); track a.id) {
@@ -66,8 +72,10 @@ const EMPTY_FORM: ArticleForm = {
                 <td class="num">{{ a.prixVenteHT | number:'1.2-2' }} DT</td>
                 <td><app-badge [value]="a.etat"></app-badge></td>
                 <td class="row-actions">
-                  <button class="btn btn-sm" (click)="openEdit(a)">Modifier</button>
-                  <button class="btn btn-sm btn-danger" (click)="remove(a)">Supprimer</button>
+                  @if (canManageStock()) {
+                    <button class="btn btn-sm" (click)="openEdit(a)">Modifier</button>
+                    <button class="btn btn-sm btn-danger" (click)="remove(a)">Supprimer</button>
+                  }
                 </td>
               </tr>
             }
@@ -80,7 +88,7 @@ const EMPTY_FORM: ArticleForm = {
       <div class="modal-backdrop" (click)="closeModal()">
         <div class="modal" (click)="$event.stopPropagation()" style="max-width:600px">
           <div class="modal-header">
-            <h3 class="mt-0">{{ editing() ? "Modifier l'article" : 'Nouvel article' }}</h3>
+            <h3 class="mt-0">{{ editing() ? 'Modifier la fourniture' : 'Nouvelle fourniture' }}</h3>
             <button class="modal-close" (click)="closeModal()">&times;</button>
           </div>
           <div class="modal-body">
@@ -107,7 +115,7 @@ const EMPTY_FORM: ArticleForm = {
                 <input [(ngModel)]="form.codeBarre" name="codeBarre" />
               </div>
               <div class="field">
-                <label>Prix de vente HT</label>
+                <label>Prix d'achat HT</label>
                 <input type="number" [(ngModel)]="form.prixVenteHT" name="prixVenteHT" />
               </div>
               <div class="field">
@@ -149,6 +157,7 @@ export class ArticlesComponent implements OnInit {
   modalOpen = signal(false);
   editing = signal<ArticleQuincaillerie | null>(null);
   error = signal<string | null>(null);
+  pageError = signal<string | null>(null);
   form: ArticleForm = { ...EMPTY_FORM };
 
   filtered = computed(() => {
@@ -163,11 +172,21 @@ export class ArticlesComponent implements OnInit {
     );
   });
 
-  constructor(private articleService: ArticleQuincaillerieService, private categorieService: CategorieService) {}
+  constructor(
+    private articleService: ArticleQuincaillerieService,
+    private categorieService: CategorieService,
+    private authService: AuthService
+  ) {}
+
+  canManageStock(): boolean {
+    return this.authService.hasRole(RoleEmploye.ADMINISTRATEUR, RoleEmploye.MAGASINIER);
+  }
 
   ngOnInit(): void {
     forkJoin([this.articleService.load(), this.categorieService.load()]).subscribe(() => {
       this.categories.set(this.categorieService.getAll());
+    }, (err: Error) => {
+      this.pageError.set(err.message);
     });
     this.articleService.data$.subscribe((data) => this.articles.set(data));
   }
@@ -197,7 +216,7 @@ export class ArticlesComponent implements OnInit {
 
   save(): void {
     if (!this.form.nom.trim() || !this.form.categorieId || this.form.prixVenteHT == null || this.form.quantiteStock == null) {
-      this.error.set('Nom, categorie, prix et quantite sont obligatoires');
+      this.error.set("Nom, categorie, prix d'achat et quantite sont obligatoires");
       return;
     }
     const editing = this.editing();
@@ -212,15 +231,23 @@ export class ArticlesComponent implements OnInit {
       const categorie = this.categorieService.getById(payload.categorieId);
       this.articleService
         .updateArticle(editing.id, { ...payload, categorieNom: categorie?.nom })
-        .subscribe(() => this.closeModal());
+        .subscribe({
+          next: () => this.closeModal(),
+          error: (err: Error) => this.error.set(err.message),
+        });
     } else {
-      this.articleService.createArticle(payload).subscribe(() => this.closeModal());
+      this.articleService.createArticle(payload).subscribe({
+        next: () => this.closeModal(),
+        error: (err: Error) => this.error.set(err.message),
+      });
     }
   }
 
   remove(a: ArticleQuincaillerie): void {
     if (confirm(`Supprimer l'article "${a.nom}" ?`)) {
-      this.articleService.delete(a.id).subscribe();
+      this.articleService.delete(a.id).subscribe({
+        error: (err: Error) => this.pageError.set(err.message),
+      });
     }
   }
 }

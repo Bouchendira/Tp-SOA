@@ -1,5 +1,5 @@
 [
-  { "id": "cat-1", "nom": "Outillage electrique", "description": "Perceuses, meuleuses, visseuses" },
-  { "id": "cat-2", "nom": "Quincaillerie generale", "description": "Vis, boulons, fixations, EPI" },
-  { "id": "cat-3", "nom": "Engins de chantier", "description": "Betonnieres, compacteurs, groupes electrogenes" }
+  { "id": "cat-1", "nom": "Ordinateurs et stations de travail", "description": "Ordinateurs portables, postes de developpement et serveurs" },
+  { "id": "cat-2", "nom": "Ecrans et accessoires", "description": "Ecrans, stations d'accueil et adaptateurs" },
+  { "id": "cat-3", "nom": "Peripheriques et reseau", "description": "Claviers, souris, casques et equipements reseau" }
 ]

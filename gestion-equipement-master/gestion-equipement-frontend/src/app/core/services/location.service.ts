@@ -1,12 +1,12 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
-import { MockCrudService } from './mock-crud.service';
-import { Location, StatutLocation } from '../models/location.model';
+import { ApiCrudService } from './api-crud.service';
+import { Location } from '../models/location.model';
 import { ClientService } from './client.service';
 import { MachineService } from './machine.service';
 import { EtatEquipement } from '../models/equipement.model';
-import { AuthService } from './auth.service';
+import { tap } from 'rxjs/operators';
 
 export interface CreateLocationInput {
   clientId: string;
@@ -18,24 +18,19 @@ export interface CreateLocationInput {
   modeLivraison?: Location['modeLivraison'];
 }
 
-/** Placeholder rate - see chap4_realisation.tex TODO re: real penalty rule. */
-const PENALITE_PAR_JOUR = 20;
-
 @Injectable({ providedIn: 'root' })
-export class LocationService extends MockCrudService<Location> {
+export class LocationService extends ApiCrudService<Location> {
   constructor(
     http: HttpClient,
     private clientService: ClientService,
-    private machineService: MachineService,
-    private authService: AuthService
+    private machineService: MachineService
   ) {
-    super(http, 'assets/data/locations.json');
+    super(http, '/api/locations-fournisseurs');
   }
 
   /**
    * Mirrors LocationService#create on the backend exactly, including the
-   * order of checks from the "Agent cree une location" sequence diagram:
-   * dates -> client existe -> machine existe -> machine disponible.
+   * Rental records represent equipment rented in from a supplier.
    */
   createLocation(input: CreateLocationInput): Observable<Location> {
     if (!(new Date(input.dateFinPrevue) > new Date(input.dateDebut))) {
@@ -44,7 +39,7 @@ export class LocationService extends MockCrudService<Location> {
 
     const client = this.clientService.getById(input.clientId);
     if (!client) {
-      return throwError(() => new Error('Client introuvable'));
+      return throwError(() => new Error('Fournisseur introuvable'));
     }
 
     const machine = this.machineService.getById(input.machineId);
@@ -58,30 +53,9 @@ export class LocationService extends MockCrudService<Location> {
       );
     }
 
-    const currentUser = this.authService.currentUser();
-
-    const location: Location = {
-      id: this.generateId('loc'),
-      dateDebut: input.dateDebut,
-      dateFinPrevue: input.dateFinPrevue,
-      dateRetour: null,
-      statut: StatutLocation.EN_COURS,
-      caution: input.caution,
-      fraisTransport: input.fraisTransport,
-      modeLivraison: input.modeLivraison,
-      clientId: client.id,
-      clientNom: client.nom,
-      machineId: machine.id,
-      machineNom: machine.nom,
-      employeId: currentUser?.id ?? '',
-      employeNom: currentUser?.nom ?? '',
-    };
-
-    // Side effect matching the @Transactional block on the backend:
-    // the machine flips to LOUE as part of the same logical operation.
-    this.machineService.update(machine.id, { etat: EtatEquipement.LOUE }).subscribe();
-
-    return this.create(location);
+    return this.createRequest(input).pipe(
+      tap(() => this.machineService.updateLocal(machine.id, { etat: EtatEquipement.LOUE }))
+    );
   }
 
   /** Mirrors LocationService#terminerLocation on the backend. */
@@ -91,19 +65,10 @@ export class LocationService extends MockCrudService<Location> {
       return throwError(() => new Error('Location introuvable'));
     }
 
-    const today = new Date();
-    const finPrevue = new Date(location.dateFinPrevue);
-    const joursRetard = Math.max(
-      0,
-      Math.ceil((today.getTime() - finPrevue.getTime()) / (1000 * 60 * 60 * 24))
+    return this.postRequest(id, 'retour').pipe(
+      tap(() =>
+        this.machineService.updateLocal(location.machineId, { etat: EtatEquipement.RETOURNE_FOURNISSEUR })
+      )
     );
-
-    this.machineService.update(location.machineId, { etat: EtatEquipement.DISPONIBLE }).subscribe();
-
-    return this.update(id, {
-      statut: StatutLocation.TERMINEE,
-      dateRetour: today.toISOString().slice(0, 10),
-      penaliteRetard: joursRetard > 0 ? joursRetard * PENALITE_PAR_JOUR : 0,
-    });
   }
 }

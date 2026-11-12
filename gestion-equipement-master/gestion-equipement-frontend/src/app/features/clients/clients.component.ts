@@ -5,6 +5,8 @@ import { ClientService } from '../../core/services/client.service';
 import { Client, TypeClient } from '../../core/models/client.model';
 import { SearchBarComponent } from '../../shared/components/search-bar/search-bar.component';
 import { BadgeComponent } from '../../shared/components/badge/badge.component';
+import { AuthService } from '../../core/services/auth.service';
+import { RoleEmploye } from '../../core/models/employe.model';
 
 interface ClientForm {
   nom: string; typeClient: TypeClient; matriculeFiscal: string; cin: string; telephone: string; email: string;
@@ -21,11 +23,15 @@ const EMPTY_FORM: ClientForm = {
   template: `
     <header class="page-header">
       <div>
-        <span class="eyebrow">Activite</span>
-        <h1>Clients</h1>
+        <span class="eyebrow">Approvisionnement</span>
+        <h1>Fournisseurs</h1>
       </div>
-      <button class="btn btn-primary" (click)="openCreate()">+ Nouveau client</button>
+      @if (canManageStock()) {
+        <button class="btn btn-primary" (click)="openCreate()">+ Nouveau fournisseur</button>
+      }
     </header>
+
+    @if (pageError()) { <p class="hint" role="alert">{{ pageError() }}</p> }
 
     <div class="flex-between" style="margin-bottom:14px">
       <app-search-bar [(value)]="search" placeholder="Rechercher par nom, email, MF/CIN..."></app-search-bar>
@@ -35,7 +41,7 @@ const EMPTY_FORM: ClientForm = {
     <div class="table-wrap">
       @if (filtered().length === 0) {
         <div class="empty-state">
-          <h3>Aucun client</h3>
+          <h3>Aucun fournisseur</h3>
           <p>Essayez un autre terme de recherche ou ajoutez-en un nouveau.</p>
         </div>
       } @else {
@@ -54,8 +60,10 @@ const EMPTY_FORM: ClientForm = {
                   <div class="text-muted" style="font-size:12px">{{ c.email }}</div>
                 </td>
                 <td class="row-actions">
-                  <button class="btn btn-sm" (click)="openEdit(c)">Modifier</button>
-                  <button class="btn btn-sm btn-danger" (click)="remove(c)">Supprimer</button>
+                  @if (canManageStock()) {
+                    <button class="btn btn-sm" (click)="openEdit(c)">Modifier</button>
+                    <button class="btn btn-sm btn-danger" (click)="remove(c)">Supprimer</button>
+                  }
                 </td>
               </tr>
             }
@@ -68,12 +76,12 @@ const EMPTY_FORM: ClientForm = {
       <div class="modal-backdrop" (click)="closeModal()">
         <div class="modal" (click)="$event.stopPropagation()">
           <div class="modal-header">
-            <h3 class="mt-0">{{ editing() ? 'Modifier le client' : 'Nouveau client' }}</h3>
+            <h3 class="mt-0">{{ editing() ? 'Modifier le fournisseur' : 'Nouveau fournisseur' }}</h3>
             <button class="modal-close" (click)="closeModal()">&times;</button>
           </div>
           <div class="modal-body">
             <div class="field">
-              <label>Type de client</label>
+              <label>Type de fournisseur</label>
               <select [(ngModel)]="form.typeClient" name="typeClient">
                 <option [value]="'PARTICULIER'">Particulier</option>
                 <option [value]="'ENTREPRISE'">Entreprise</option>
@@ -121,6 +129,7 @@ export class ClientsComponent implements OnInit {
   modalOpen = signal(false);
   editing = signal<Client | null>(null);
   error = signal<string | null>(null);
+  pageError = signal<string | null>(null);
   form: ClientForm = { ...EMPTY_FORM };
 
   filtered = computed(() => {
@@ -136,10 +145,16 @@ export class ClientsComponent implements OnInit {
     );
   });
 
-  constructor(private clientService: ClientService) {}
+  constructor(private clientService: ClientService, private authService: AuthService) {}
+
+  canManageStock(): boolean {
+    return this.authService.hasRole(RoleEmploye.ADMINISTRATEUR, RoleEmploye.MAGASINIER);
+  }
 
   ngOnInit(): void {
-    this.clientService.load().subscribe();
+    this.clientService.load().subscribe({
+      error: (err: Error) => this.pageError.set(err.message),
+    });
     this.clientService.data$.subscribe((data) => this.clients.set(data));
   }
 
@@ -179,7 +194,9 @@ export class ClientsComponent implements OnInit {
 
   remove(c: Client): void {
     if (confirm(`Supprimer le client "${c.nom}" ?`)) {
-      this.clientService.delete(c.id).subscribe();
+      this.clientService.delete(c.id).subscribe({
+        error: (err: Error) => this.pageError.set(err.message),
+      });
     }
   }
 }

@@ -11,23 +11,26 @@ import { RoleEmploye } from '../../../core/models/employe.model';
   template: `
     <aside class="sidebar">
       <div class="brand">
-        <span class="brand-mark">QM</span>
-        <div>
-          <div class="brand-name">Quincaillerie</div>
-          <div class="brand-sub">&amp; Machinerie</div>
-        </div>
+        <img class="brand-logo" src="assets/logo_isi.png" alt="Institut Superieur Informatique" />
       </div>
 
       <nav>
         <a routerLink="/dashboard" routerLinkActive="active" class="nav-link">Tableau de bord</a>
         <div class="nav-group">Inventaire</div>
-        <a routerLink="/categories" routerLinkActive="active" class="nav-link">Categories</a>
-        <a routerLink="/machines" routerLinkActive="active" class="nav-link">Machines</a>
-        <a routerLink="/articles" routerLinkActive="active" class="nav-link">Quincaillerie</a>
-        <div class="nav-group">Activite</div>
-        <a routerLink="/locations" routerLinkActive="active" class="nav-link">Locations</a>
-        <a routerLink="/ventes" routerLinkActive="active" class="nav-link">Ventes</a>
-        <a routerLink="/clients" routerLinkActive="active" class="nav-link">Clients</a>
+        @if (canManageStock()) {
+          <a routerLink="/categories" routerLinkActive="active" class="nav-link">Categories</a>
+        }
+        <a routerLink="/machines" routerLinkActive="active" class="nav-link">Materiel informatique</a>
+        <a routerLink="/articles" routerLinkActive="active" class="nav-link">Fournitures et accessoires</a>
+        @if (canReviewPurchases()) {
+          <div class="nav-group">Achats et comptabilite</div>
+          <a routerLink="/achats" routerLinkActive="active" class="nav-link">Suivi des achats</a>
+          <a routerLink="/fournisseurs" routerLinkActive="active" class="nav-link">Fournisseurs</a>
+        }
+        @if (canManageStock()) {
+          <div class="nav-group">Gestion du stock</div>
+          <a routerLink="/locations-fournisseurs" routerLinkActive="active" class="nav-link">Locations fournisseurs</a>
+        }
         @if (isAdmin()) {
           <div class="nav-group">Administration</div>
           <a routerLink="/employes" routerLinkActive="active" class="nav-link">Employes</a>
@@ -51,7 +54,7 @@ import { RoleEmploye } from '../../../core/models/employe.model';
       position: fixed;
       top: 0; left: 0; bottom: 0;
       width: var(--sidebar-w);
-      background: var(--ink);
+      background: var(--navy);
       color: #fff;
       display: flex;
       flex-direction: column;
@@ -59,28 +62,11 @@ import { RoleEmploye } from '../../../core/models/employe.model';
     }
     .brand {
       display: flex; align-items: center; gap: 10px;
-      padding: 0 20px 20px;
+      padding: 0 18px 20px;
       border-bottom: 1px solid rgba(255,255,255,0.1);
       margin-bottom: 12px;
     }
-    .brand-mark {
-      background: var(--accent);
-      color: #fff;
-      font-family: var(--font-display);
-      font-weight: 700;
-      font-size: 15px;
-      width: 34px; height: 34px;
-      display: flex; align-items: center; justify-content: center;
-      border-radius: 4px;
-    }
-    .brand-name {
-      font-family: var(--font-display);
-      text-transform: uppercase;
-      font-size: 15px;
-      line-height: 1.1;
-      letter-spacing: 0.02em;
-    }
-    .brand-sub { font-size: 11px; color: rgba(255,255,255,0.5); }
+    .brand-logo { display: block; width: 100%; max-width: 190px; height: auto; }
     nav { display: flex; flex-direction: column; padding: 0 12px; flex: 1; }
     .nav-group {
       font-family: var(--font-mono);
@@ -130,6 +116,14 @@ export class NavbarComponent {
 
   isAdmin(): boolean {
     return this.auth.hasRole(RoleEmploye.ADMINISTRATEUR);
+  }
+
+  canManageStock(): boolean {
+    return this.auth.hasRole(RoleEmploye.ADMINISTRATEUR, RoleEmploye.MAGASINIER);
+  }
+
+  canReviewPurchases(): boolean {
+    return this.auth.hasRole(RoleEmploye.ADMINISTRATEUR, RoleEmploye.MAGASINIER, RoleEmploye.COMPTABLE);
   }
 
   initials(): string {

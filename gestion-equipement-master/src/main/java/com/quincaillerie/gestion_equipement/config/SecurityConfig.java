@@ -6,6 +6,7 @@ import com.quincaillerie.gestion_equipement.security.RestAuthenticationEntryPoin
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -47,6 +48,27 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/employes/**").hasRole("ADMINISTRATEUR")
+                        .requestMatchers(HttpMethod.GET, "/api/machines/**", "/api/articles-quincaillerie/**",
+                                "/api/categories/**").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/machines/*/etat")
+                        .hasAnyRole("ADMINISTRATEUR", "MAGASINIER")
+                        .requestMatchers(HttpMethod.PATCH, "/api/machines/*/affectation")
+                        .hasAnyRole("ADMINISTRATEUR", "MAGASINIER", "AGENT")
+                        .requestMatchers(HttpMethod.POST, "/api/machines/**", "/api/articles-quincaillerie/**",
+                                "/api/categories/**", "/api/fournisseurs/**", "/api/clients/**",
+                                "/api/locations/**", "/api/locations-fournisseurs/**",
+                                "/api/achats/**", "/api/ventes/**")
+                        .hasAnyRole("ADMINISTRATEUR", "MAGASINIER")
+                        .requestMatchers(HttpMethod.PUT, "/api/machines/**", "/api/articles-quincaillerie/**",
+                                "/api/categories/**", "/api/fournisseurs/**", "/api/clients/**")
+                        .hasAnyRole("ADMINISTRATEUR", "MAGASINIER")
+                        .requestMatchers(HttpMethod.DELETE, "/api/machines/**", "/api/articles-quincaillerie/**",
+                                "/api/categories/**", "/api/fournisseurs/**", "/api/clients/**")
+                        .hasAnyRole("ADMINISTRATEUR", "MAGASINIER")
+                        .requestMatchers("/api/achats/**", "/api/ventes/**", "/api/fournisseurs/**", "/api/clients/**")
+                        .hasAnyRole("ADMINISTRATEUR", "MAGASINIER", "COMPTABLE")
+                        .requestMatchers("/api/locations/**", "/api/locations-fournisseurs/**")
+                        .hasAnyRole("ADMINISTRATEUR", "MAGASINIER")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
